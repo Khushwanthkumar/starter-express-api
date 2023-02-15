@@ -64,7 +64,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         resultArray.forEach((row, rowIndex) => {
            ws.cell(rowIndex + 2, 1).string(row.SerialNumber.toString())
             headers.forEach((header, index) => {
-                ws.cell(rowIndex + 2, index + 2).string(row[header]);
+                ws.cell(rowIndex + 2, index + 2).string(row[header].toString());
             });
         });
 
