@@ -61,8 +61,8 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         {}
     );
     const Chart = chartjs.Chart;
-    const chart = new Chart(
-        new canvas.Canvas(200, 200),
+   const chart = new chartjs.Chart(
+        document.createElement('canvas').getContext('2d'),
         {
             type: 'pie',
             data: {
