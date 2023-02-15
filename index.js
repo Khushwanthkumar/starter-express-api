@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const csvParser = require('csv-parser');
 const AWS = require('aws-sdk');
-const S3FS = require('@cyclic.sh/s3fs');
+const S3FS = require('@cyclic.sh/s3fs/promises');
 const chartjs = require('chart.js');
 // const canvas = require('canvas');
 
@@ -18,10 +18,11 @@ AWS.config.update({
 
 const s3 = new AWS.S3();
 const s3fs = new S3FS({
-    bucket: process.env.S3_BUCKET,
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    region: process.env.AWS_REGION
+    region: process.env.MY_REGION,
+        credentials:{
+            accessKeyId: process.env.MY_AWS_ACCESS_KEY_ID,
+            secretAccessKey: process.env.MY_AWS_SECRET_ACCESS_KEY
+        }
 });
 
 // API endpoint to upload CSV file
