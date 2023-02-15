@@ -32,14 +32,14 @@ const storage = multer.diskStorage({
 
 // Set up Multer upload
 // const upload = multer({ storage: storage });
-const csvFilter = (req, file, cb) => {
-  if (file.mimetype.includes("csv")) {
-    cb(null, true);
-  } else {
-    cb("Please upload only csv file.", false);
-  }
-};
-const upload = multer({ dest: "/tmp", fileFilter: csvFilter });
+// const csvFilter = (req, file, cb) => {
+//   if (file.mimetype.includes("csv")) {
+//     cb(null, true);
+//   } else {
+//     cb("Please upload only csv file.", false);
+//   }
+// };
+const upload = multer({ dest: "/tmp" });
 
 // Define API endpoint for file upload
 app.post('/upload', upload.single('file'), async (req, res) => {
