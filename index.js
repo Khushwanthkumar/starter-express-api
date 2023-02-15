@@ -89,16 +89,13 @@ app.post('/upload', upload.single('file'), async (req, res) => {
                     .png()
             );
         const chartFilename = `chart-${new Date().getTime()}.png`;
-        chart.toBuffer()
-            .then(buffer =>
-                sharp(buffer)
-                    .resize(300, 300)
-                    .background({ r: 255, g: 255, b: 255, alpha: 1 })
-                    .png()
-            )
-            .then(pngBuffer =>
-                fs.writeFile(chartFilename, pngBuffer)
-            );
+        chart.toFile(chartFilename, function(err, info) {
+  if (err) {
+    console.error(err);
+  } else {
+    console.log(info);
+  }
+});
 
         // Upload files to S3 bucket
         const excelFile = await fs.readFile(excelFilename);
