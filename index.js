@@ -17,7 +17,7 @@ AWS.config.update({
 });
 
 const s3 = new AWS.S3();
-const s3fs = new S3FS({
+const s3fs = new S3FS(process.env.S3_BUCKET,{
     region: process.env.MY_REGION,
         credentials:{
             accessKeyId: process.env.MY_AWS_ACCESS_KEY_ID,
