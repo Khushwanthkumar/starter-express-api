@@ -62,7 +62,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
             ws.cell(1, index + 2).string(header);
         });
         resultArray.forEach((row, rowIndex) => {
-            ws.cell(rowIndex + 2, 1).number(row.SerialNumber);
+           ws.cell(rowIndex + 2, 1).string(row.SerialNumber.toString())
             headers.forEach((header, index) => {
                 ws.cell(rowIndex + 2, index + 2).string(row[header]);
             });
@@ -78,7 +78,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         const total = resultArray.length;
         const pieData = [{ name: 'Male', value: maleCount }, { name: 'Female', value: femaleCount }];
         const chart = sharp(Buffer.from(JSON.stringify(pieData)));
-        chart.resize(300, 300).background({ r: 255, g: 255, b: 255, alpha: 1 }).png();
+        chart.resize(300, 300).toBuffer().then(buffer => sharp(buffer).background({ r: 255, g: 255, b: 255, alpha: 1 }).png());
         const chartFilename = `chart-${new Date().getTime()}.png`;
         chart.toFile(chartFilename);
 
