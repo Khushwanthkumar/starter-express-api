@@ -78,12 +78,12 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         const excelFile = fs.readFileSync(excelFilename);
         const chartFile = fs.readFileSync(chartFilename);
         const excelParams = {
-            Bucket: "cyclic-weary-red-trunks-ap-southeast-1",
+            Bucket: process.env.BUCKET,
             Key: excelFilename,
             Body: excelFile
         };
         const chartParams = {
-            Bucket: "cyclic-weary-red-trunks-ap-southeast-1",
+            Bucket: process.env.BUCKET,
             Key: chartFilename,
             Body: chartFile
         };
@@ -91,8 +91,8 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         await s3.upload(chartParams).promise();
 
         // Get S3 file URLs
-        const excelUrl = s3.getSignedUrl('getObject', { Bucket: "cyclic-weary-red-trunks-ap-southeast-1", Key: excelFilename });
-        const chartUrl = s3.getSignedUrl('getObject', { Bucket: "cyclic-weary-red-trunks-ap-southeast-1", Key: chartFilename });
+        const excelUrl = s3.getSignedUrl('getObject', { Bucket: process.env.BUCKET, Key: excelFilename });
+        const chartUrl = s3.getSignedUrl('getObject', { Bucket: process.env.BUCKET, Key: chartFilename });
 
         // Return file URLs in API response
         res.json({ excelUrl, chartUrl });
