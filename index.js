@@ -23,7 +23,7 @@ const s3 = new AWS.S3({
 // Set up Multer storage
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, './uploads')
+        cb(null, './tmp')
     },
     filename: function (req, file, cb) {
         cb(null, file.originalname)
@@ -39,7 +39,7 @@ const csvFilter = (req, file, cb) => {
     cb("Please upload only csv file.", false);
   }
 };
-const upload = multer({ dest: "uploads/", fileFilter: csvFilter });
+const upload = multer({ dest: "tmp/", fileFilter: csvFilter });
 
 // Define API endpoint for file upload
 app.post('/upload', upload.single('file'), async (req, res) => {
