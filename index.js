@@ -1,7 +1,115 @@
-const express = require('express')
-const app = express()
+const express = require('express');
+const multer = require('multer');
+const csv = require('csvtojson');
+const xlsx = require('xlsx');
+const excel = require('excel4node');
+const fs = require('fs');
+const AWS = require('aws-sdk');
+const sharp = require('sharp');
+const app = express();
+
 app.all('/', (req, res) => {
     console.log("Just got a request!")
     res.send('Yo!')
 })
+
+// Initialize AWS S3 bucket
+const s3 = new AWS.S3({
+    accessKeyId: 'YOUR_ACCESS_KEY_ID',
+    secretAccessKey: 'YOUR_SECRET_ACCESS_KEY',
+    region: 'YOUR_REGION'
+});
+
+// Set up Multer storage
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, './uploads')
+    },
+    filename: function (req, file, cb) {
+        cb(null, file.originalname)
+    }
+});
+
+// Set up Multer upload
+const upload = multer({ storage: storage });
+
+// Define API endpoint for file upload
+app.post('/upload', upload.single('file'), async (req, res) => {
+    try {
+        // Read CSV file and eliminate blank rows
+        const jsonArray = await csv({ noheader: true }).fromFile(req.file.path);
+        const filteredArray = jsonArray.filter(row => Object.values(row).some(cell => cell !== ''));
+
+        // Insert serial number column
+        const resultArray = filteredArray.map((row, index) => ({ ...row, SerialNumber: index + 1 }));
+
+        // Create Excel workbook and worksheet
+        const wb = new excel.Workbook();
+        const ws = wb.addWorksheet('Data');
+
+        // Write headers and data to Excel worksheet
+        const headers = Object.keys(resultArray[0]);
+        ws.cell(1, 1).string('Serial Number');
+        headers.forEach((header, index) => {
+            ws.cell(1, index + 2).string(header);
+        });
+        resultArray.forEach((row, rowIndex) => {
+            ws.cell(rowIndex + 2, 1).number(row.SerialNumber);
+            headers.forEach((header, index) => {
+                ws.cell(rowIndex + 2, index + 2).string(row[header]);
+            });
+        });
+
+        // Save Excel workbook to file
+        const excelFilename = `output-${new Date().getTime()}.xlsx`;
+        wb.write(excelFilename);
+
+        // Generate pie chart using sharp
+        const maleCount = resultArray.filter(row => row.Gender === 'Male').length;
+        const femaleCount = resultArray.filter(row => row.Gender === 'Female').length;
+        const total = resultArray.length;
+        const pieData = [{ name: 'Male', value: maleCount }, { name: 'Female', value: femaleCount }];
+        const chart = sharp(Buffer.from(JSON.stringify(pieData)));
+        chart.resize(300, 300).background({ r: 255, g: 255, b: 255, alpha: 1 }).png();
+        const chartFilename = `chart-${new Date().getTime()}.png`;
+        chart.toFile(chartFilename);
+
+        // Upload files to S3 bucket
+        const excelFile = fs.readFileSync(excelFilename);
+        const chartFile = fs.readFileSync(chartFilename);
+        const excelParams = {
+            Bucket: 'YOUR_S3_BUCKET_NAME',
+            Key: excelFilename,
+            Body: excelFile
+        };
+        const chartParams = {
+            Bucket: 'YOUR_S3_BUCKET_NAME',
+            Key: chartFilename,
+            Body: chartFile
+        };
+        await s3.upload(excelParams).promise();
+        await s3.upload(chartParams).promise();
+
+        // Get S3 file URLs
+        const excelUrl = s3.getSignedUrl('getObject', { Bucket: 'YOUR_S3_BUCKET_NAME', Key: excelFilename });
+        const chartUrl = s3.getSignedUrl('getObject', { Bucket: 'YOUR_S3_BUCKET_NAME', Key: chartFilename });
+
+        // Return file URLs in API response
+        res.json({ excelUrl, chartUrl });
+
+        // Delete local files
+        fs.unlinkSync(req.file.path);
+        fs.unlinkSync(excelFilename);
+        fs.unlinkSync(chartFilename);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Something went wrong' });
+    }
+});
+
+// Start the server
+app.listen(3000, () => {
+    console.log('Server started on port 3000');
+});
+
 app.listen(process.env.PORT || 3000)
