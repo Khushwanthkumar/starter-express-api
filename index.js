@@ -17,12 +17,9 @@ AWS.config.update({
 });
 
 const s3 = new AWS.S3();
-const s3fs = new S3FS(process.env.S3_BUCKET,{
-    region: process.env.MY_REGION,
-        credentials:{
-            accessKeyId: process.env.MY_AWS_ACCESS_KEY_ID,
-            secretAccessKey: process.env.MY_AWS_SECRET_ACCESS_KEY
-        }
+const s3fs = new S3FS("cyclic-weary-red-trunks-ap-southeast-1", {
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
 });
 
 // API endpoint to upload CSV file
@@ -85,7 +82,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 
     // Upload files to S3
     const s3Params = {
-        Bucket: process.env.S3_BUCKET,
+        Bucket: "cyclic-weary-red-trunks-ap-southeast-1",
         Key: `file-${Date.now()}.xlsx`,
         Body: excelFile
     };
@@ -96,7 +93,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         } else {
             const excelFileUrl = data.Location;
             const s3Params = {
-                Bucket: process.env.S3_BUCKET,
+                Bucket: "cyclic-weary-red-trunks-ap-southeast-1",
                 Key: `chart-${Date.now()}.png`,
                 Body: chartImage
             };
