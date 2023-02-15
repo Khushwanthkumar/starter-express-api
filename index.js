@@ -38,13 +38,14 @@ app.post('/upload', upload.single('file'), (req, res) => {
     });
 
   // Create Excel file
+  const workbookObj = xlsx.utils.book_new();
   const worksheet = xlsx.utils.json_to_sheet(rows);
   xlsx.utils.book_append_sheet(
-    xlsx.utils.book_new(),
+    workbookObj,
     worksheet,
     'Sheet 1'
   );
-  const excelFile = xlsx.writeFile(workbook, 'file.xlsx');
+  const excelFile = xlsx.writeFile(workbookObj, 'file.xlsx');
 
   // Create Pie chart
   const genderCounts = rows.reduce(
