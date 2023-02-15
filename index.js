@@ -31,7 +31,8 @@ const storage = multer.diskStorage({
 });
 
 // Set up Multer upload
-const upload = multer({ storage: storage });
+// const upload = multer({ storage: storage });
+const upload = multer({ dest: "uploads/", fileFilter: csvFilter });
 
 // Define API endpoint for file upload
 app.post('/upload', upload.single('file'), async (req, res) => {
