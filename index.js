@@ -83,8 +83,8 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         chart.toFile(chartFilename);
 
         // Upload files to S3 bucket
-        const excelFile = fs.readFileSync(excelFilename);
-        const chartFile = fs.readFileSync(chartFilename);
+        const excelFile = fs.readFile(excelFilename);
+        const chartFile = fs.readFile(chartFilename);
         const excelParams = {
             Bucket: process.env.BUCKET,
             Key: excelFilename,
