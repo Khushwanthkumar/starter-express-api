@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const csvParser = require('csv-parser');
 const AWS = require('aws-sdk');
-const S3FS = require('@cyclic.sh/s3fs/promises');
+const S3FS = require('@cyclic.sh/s3fs');
 const chartjs = require('chart.js');
 // const canvas = require('canvas');
 
