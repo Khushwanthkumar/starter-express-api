@@ -78,13 +78,13 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         const total = resultArray.length;
         const pieData = [{ name: 'Male', value: maleCount }, { name: 'Female', value: femaleCount }];
         const chart = sharp(Buffer.from(JSON.stringify(pieData)));
-        chart.resize(300, 300).toBuffer().then(buffer => sharp(buffer).background({ r: 255, g: 255, b: 255, alpha: 1 }).png());
+        chart.resize(300, 300).background({ r: 255, g: 255, b: 255, alpha: 1 }).png().toBuffer().then(buffer => sharp(buffer).toFormat('png').toBuffer());
         const chartFilename = `chart-${new Date().getTime()}.png`;
         chart.toFile(chartFilename);
 
         // Upload files to S3 bucket
-        const excelFile = await fs.readFile(excelFilename);
-        const chartFile = await fs.readFile(chartFilename);
+        const excelFile = await fs.promises.readFile(excelFilename);
+        const chartFile = await fs.promises.readFile(chartFilename);
         const excelParams = {
             Bucket: process.env.BUCKET,
             Key: excelFilename,
