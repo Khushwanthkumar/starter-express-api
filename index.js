@@ -15,9 +15,9 @@ app.all('/', (req, res) => {
 
 // Initialize AWS S3 bucket
 const s3 = new AWS.S3({
-    accessKeyId: 'YOUR_ACCESS_KEY_ID',
-    secretAccessKey: 'YOUR_SECRET_ACCESS_KEY',
-    region: 'YOUR_REGION'
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'YOUR_ACCESS_KEY_ID',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'YOUR_SECRET_ACCESS_KEY',
+    region: process.env.AWS_REGION || 'YOUR_REGION'
 });
 
 // Set up Multer storage
@@ -78,12 +78,12 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         const excelFile = fs.readFileSync(excelFilename);
         const chartFile = fs.readFileSync(chartFilename);
         const excelParams = {
-            Bucket: 'YOUR_S3_BUCKET_NAME',
+            Bucket: "cyclic-weary-red-trunks-ap-southeast-1",
             Key: excelFilename,
             Body: excelFile
         };
         const chartParams = {
-            Bucket: 'YOUR_S3_BUCKET_NAME',
+            Bucket: "cyclic-weary-red-trunks-ap-southeast-1",
             Key: chartFilename,
             Body: chartFile
         };
@@ -91,8 +91,8 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         await s3.upload(chartParams).promise();
 
         // Get S3 file URLs
-        const excelUrl = s3.getSignedUrl('getObject', { Bucket: 'YOUR_S3_BUCKET_NAME', Key: excelFilename });
-        const chartUrl = s3.getSignedUrl('getObject', { Bucket: 'YOUR_S3_BUCKET_NAME', Key: chartFilename });
+        const excelUrl = s3.getSignedUrl('getObject', { Bucket: "cyclic-weary-red-trunks-ap-southeast-1", Key: excelFilename });
+        const chartUrl = s3.getSignedUrl('getObject', { Bucket: "cyclic-weary-red-trunks-ap-southeast-1", Key: chartFilename });
 
         // Return file URLs in API response
         res.json({ excelUrl, chartUrl });
