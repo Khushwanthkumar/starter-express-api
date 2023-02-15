@@ -1,123 +1,117 @@
 const express = require('express');
 const multer = require('multer');
-const csvParser = require('csv-parser');
+const csvtojson = require('csvtojson');
+const json2xls = require('json2xls');
+const ExcelJS = require('exceljs');
 const AWS = require('aws-sdk');
-const S3FS = require('@cyclic.sh/s3fs');
-const chartjs = require('chart.js');
-// const canvas = require('canvas');
+
+// Configure AWS
+const s3 = new AWS.S3({
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+});
 
 const app = express();
-const upload = multer();
 
-// AWS S3 setup
-AWS.config.update({
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    region: process.env.AWS_REGION
+// Set storage engine for multer to save uploaded file
+const storage = multer.diskStorage({
+    destination: (req, file, callback) => {
+        callback(null, './uploads/');
+    },
+    filename: (req, file, callback) => {
+        callback(null, file.originalname);
+    }
 });
 
-const s3 = new AWS.S3();
-const s3fs = new S3FS("cyclic-weary-red-trunks-ap-southeast-1", {
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
-});
+const upload = multer({ storage: storage });
 
-console.log('s3fs:', s3fs);
+app.post('/upload-csv', upload.single('csv'), (req, res) => {
+    // Read CSV file and convert to JSON
+    csvtojson()
+        .fromFile(req.file.path)
+        .then((jsonObj) => {
+            // Filter blank rows and assign serial number
+            const filteredJsonObj = jsonObj
+                .filter((row) => Object.values(row).some((value) => value !== ''))
+                .map((row, index) => ({ '#': index + 1, ...row }));
 
-// API endpoint to upload CSV file
-app.post('/upload', upload.single('file'), async (req, res) => {
-    const serialNumberColumnName = 'Serial Number';
+            // Convert to Excel file
+            const xlsData = json2xls(filteredJsonObj);
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Sheet 1');
+            worksheet.columns = [
+                { header: '#', key: '#' },
+                { header: 'Name', key: 'name' },
+                { header: 'Gender', key: 'gender' }
+            ];
+            worksheet.addRows(filteredJsonObj);
 
-    // Read CSV file and eliminate blank rows
-    const rows = [];
-    req.file.buffer
-        .toString('utf-8')
-        .split('\n')
-        .forEach((row, index) => {
-            if (row.trim() !== '') {
-                const newRow = {};
-                newRow[serialNumberColumnName] = index;
-                row.split(',').forEach((cell, cellIndex) => {
-                    newRow[`Column ${cellIndex + 1}`] = cell.trim();
-                });
-                rows.push(newRow);
-            }
-        });
-
-    // Create Excel file
-    const fileData = await s3fs.writeFile('file.xlsx', '');
-    const worksheet = s3fs.createWriteStream('file.xlsx');
-    const worksheetData = xlsx.utils.json_to_sheet(rows);
-    xlsx.utils.book_append_sheet(worksheetData, worksheet);
-    const excelFile = xlsx.writeFile(worksheetData, worksheet);
-
-    // Create Pie chart
-    const genderCounts = rows.reduce(
-        (acc, row) => {
-            const gender = row['Column 1'];
-            acc[gender] = (acc[gender] || 0) + 1;
-            return acc;
-        },
-        {}
-    );
-    const Chart = chartjs.Chart;
-   const chart = new chartjs.Chart(
-        document.createElement('canvas').getContext('2d'),
-        {
-            type: 'pie',
-            data: {
-                labels: Object.keys(genderCounts),
-                datasets: [
-                    {
-                        data: Object.values(genderCounts),
-                        backgroundColor: [
-                            'rgb(255, 99, 132)',
-                            'rgb(54, 162, 235)',
-                            'rgb(255, 205, 86)'
-                        ]
-                    }
-                ]
-            }
-        }
-    );
-    const chartImage = chart.toBase64Image();
-
-    // Upload files to S3
-    const s3Params = {
-        Bucket: "cyclic-weary-red-trunks-ap-southeast-1",
-        Key: `file-${Date.now()}.xlsx`,
-        Body: excelFile
-    };
-    s3.upload(s3Params, (err, data) => {
-        if (err) {
-            console.error(err);
-            res.status(500).send('Error uploading file to S3');
-        } else {
-            const excelFileUrl = data.Location;
-            const s3Params = {
-                Bucket: "cyclic-weary-red-trunks-ap-southeast-1",
-                Key: `chart-${Date.now()}.png`,
-                Body: chartImage
-            };
-            s3.upload(s3Params, (err, data) => {
-                if (err) {
-                    console.error(err);
-                    res.status(500).send('Error uploading chart to S3');
-                } else {
-                    const chartImageUrl = data.Location;
-                    // Return file URLs in response
-                    res.status(200).json({
-                        excelFileUrl,
-                        chartImageUrl
-                    });
-                }
+            // Generate Pie chart
+            const pieChart = workbook.addWorksheet('Gender Ratio');
+            const genderData = filteredJsonObj.reduce(
+                (data, row) => {
+                    const gender = row.gender;
+                    data[gender] = (data[gender] || 0) + 1;
+                    return data;
+                },
+                {}
+            );
+            const pieChartLabels = Object.keys(genderData);
+            const pieChartValues = pieChartLabels.map((label) => genderData[label]);
+            pieChart.addChart({
+                title: 'Gender Ratio',
+                type: 'pie',
+                data: {
+                    labels: pieChartLabels,
+                    datasets: [{ data: pieChartValues }]
+                },
+                position: { x: 0, y: 0, width: 20, height: 15 }
             });
-        }
-    });
+
+            // Save Excel file and Pie chart as PNG
+            workbook.xlsx.writeFile('result.xlsx').then(() => {
+                const chartPngBuffer = pieChart.getImageBuffer();
+                chartPngBuffer.then((buffer) => {
+                    s3.upload(
+                        {
+                            Bucket: process.env.AWS_BUCKET_NAME,
+                            Key: 'result.xlsx',
+                            Body: xlsData,
+                            ContentType: 'application/vnd.ms-excel'
+                        },
+                        (err, data) => {
+                            if (err) {
+                                res.status(500).send('Error uploading file');
+                                return;
+                            }
+                            s3.upload(
+                                {
+                                    Bucket: process.env.AWS_BUCKET_NAME,
+                                    Key: 'chart.png',
+                                    Body: buffer,
+                                    ContentType: 'image/png'
+                                },
+                                (err, data) => {
+                                    if (err) {
+                                        res.status(500).send('Error uploading file');
+                                        return;
+                                    }
+                                    res.json({
+                                        excelFileUrl: data.Location,
+                                        chartImageUrl: data.Location
+                                    });
+                                }
+                            );
+                        }
+                    );
+                });
+            });
+        })
+        .catch((err) => {
+            res.status(500).send('Error processing CSV file');
+        });
 });
 
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
+app.listen(process.env.PORT || 3000, () => {
+    console.log('Server started');
 });
