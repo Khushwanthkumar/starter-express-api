@@ -22,6 +22,8 @@ const s3fs = new S3FS("cyclic-weary-red-trunks-ap-southeast-1", {
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
 });
 
+console.log('s3fs:', s3fs);
+
 // API endpoint to upload CSV file
 app.post('/upload', upload.single('file'), async (req, res) => {
     const serialNumberColumnName = 'Serial Number';
